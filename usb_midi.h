@@ -52,6 +52,7 @@ public:
 	void set_control_change_handler(void(*ptr)(byte channel, byte number, byte value)) { _control_change_handler = ptr; }
 	void set_program_change_handler(void(*ptr)(byte channel, byte number)) { _program_change_handler = ptr; }
 	void set_pitch_bend_handler(void(*ptr)(byte channel, int bend)) { _pitch_bend_handler = ptr; }
+	void set_raw_midi_handler(void(*ptr)(uint32_t midi_data_size, void *midi_data)) { _raw_midi_handler = ptr; }
 
 private:
 	void attach_isr();
@@ -72,4 +73,5 @@ private:
 	void(*_control_change_handler)(byte, byte, byte);
 	void(*_program_change_handler)(byte, byte);
 	void(*_pitch_bend_handler)(byte, int);
+	void(*_raw_midi_handler)(uint32_t size, void *data);
 };

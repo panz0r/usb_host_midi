@@ -71,6 +71,7 @@ USBMidi::USBMidi(USBHost &usb)
 	, _control_change_handler(nullptr)
 	, _program_change_handler(nullptr)
 	, _pitch_bend_handler(nullptr)
+	, _raw_midi_handler(nullptr)
 {
 
 	ijcringbuffer_init(&_ringbuffer, _ringbuffer_data, RINGBUFFER_SIZE);
@@ -314,6 +315,10 @@ uint32_t USBMidi::Poll()
 	uint32_t available;
 	while ((available = ijcringbuffer_consumeable_size_continuous(&_ringbuffer)) > 0) {
 		uint8_t *buffer = (uint8_t*)ijcringbuffer_peek(&_ringbuffer);
+
+		if (_raw_midi_handler) {
+			_raw_midi_handler(available, buffer);
+		}
 
 		uint8_t header = buffer[1] & 0xf0;
 
