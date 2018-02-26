@@ -27,18 +27,6 @@
 class USBMidi : public USBDeviceConfig
 {
 public:
-
-	enum MIDI_HANDLER_ID
-	{
-		NOTE_OFF,
-		NOTE_ON,
-		CONTROL_CHANGE,
-		PROGRAM_CHANGE,
-		PITCH_BEND,
-
-		HANDLER_COUNT
-	};
-
 	USBMidi(USBHost &usb);
 
 	virtual uint32_t Init(uint32_t parent, uint32_t port, uint32_t lowspeed);
@@ -63,7 +51,7 @@ private:
 	uint32_t _address;
 	
 
-	/* Endpoint data structure */
+	// Endpoint data structure
 	EpInfo  _ep_info[MIDI_MAX_ENDPOINTS];
 	uint8_t _ringbuffer_data[RINGBUFFER_SIZE];
 
