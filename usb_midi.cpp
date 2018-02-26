@@ -24,7 +24,7 @@ uint32_t get_descriptor_string(USBHost &usb, uint8_t index, uint32_t buffer_size
 	return 0;
 }
 
-#define RING_BUFFER_SIZE 32
+
 
 extern void (*gpf_isr)(void);
 void (*old_gpf_isr)(void) = nullptr;
@@ -40,7 +40,11 @@ void UHD_ISR_OVERRIDE(void)
 			uhd_ack_in_received(pipe);
 
 			uint32_t nb_byte_received = uhd_byte_count(pipe);
+			//ISR_TRACE(printf("%d bytes received\r\n", nb_byte_received));
+
 			uint8_t *ptr_ep_data = (uint8_t *)& uhd_get_pipe_fifo_access(pipe, 8);
+
+			// peek first byte and discard system messages for now
 			if (nb_byte_received > 0) {
 				int ret = ijcringbuffer_produce(&_ringbuffer, ptr_ep_data, nb_byte_received);
 				if (!ret) {
@@ -225,11 +229,33 @@ void USBMidi::parse_config_descriptors(uint32_t address, uint8_t config_index, u
 		{
 			USB_CONFIGURATION_DESCRIPTOR *desc = (USB_CONFIGURATION_DESCRIPTOR*)ptr;
 			conf_value = desc->bConfigurationValue;
+
+			DESC_TRACE(printf("\r\nUSB_CONFIGURATION_DESCRIPTOR\r\n"));
+			DESC_TRACE(printf("bLength: %d\r\n", desc->bLength));
+			DESC_TRACE(printf("bDescriptorType: 0x%x\r\n", desc->bDescriptorType));
+			DESC_TRACE(printf("wTotalLength: %d\r\n", desc->wTotalLength));
+			DESC_TRACE(printf("bNumInterfaces: %d\r\n", desc->bNumInterfaces));
+			DESC_TRACE(printf("bConfigurationValue: %d\r\n", desc->bConfigurationValue));
+			DESC_TRACE(printf("iConfiguration: %d\r\n", desc->iConfiguration));
+			DESC_TRACE(printf("bmAttributes: 0x%x\r\n", desc->bmAttributes));
+			//DESC_TRACE(printf("MaxPower: %d\r\n", desc->MaxPower));
+
 			break;
 		}
 		case USB_DESCRIPTOR_INTERFACE:
 		{
 			USB_INTERFACE_DESCRIPTOR *desc = (USB_INTERFACE_DESCRIPTOR*)ptr;
+			DESC_TRACE(printf("\r\nUSB_INTERFACE_DESCRIPTOR\r\n"));
+			DESC_TRACE(printf("bLength: %d\r\n", desc->bLength));
+			DESC_TRACE(printf("bDescriptorType: 0x%x\r\n", desc->bDescriptorType));
+			DESC_TRACE(printf("bInterfaceNumber: %d\r\n", desc->bInterfaceNumber));
+			DESC_TRACE(printf("bAlternateSetting: 0x%x\r\n", desc->bAlternateSetting));
+			DESC_TRACE(printf("bNumEndpoints: %d\r\n", desc->bNumEndpoints));
+			DESC_TRACE(printf("bInterfaceClass: 0x%x\r\n", desc->bInterfaceClass));
+			DESC_TRACE(printf("bInterfaceSubClass: 0x%x\r\n", desc->bInterfaceSubClass));
+			DESC_TRACE(printf("bInterfaceProtocol: 0x%x\r\n", desc->bInterfaceProtocol));
+			DESC_TRACE(printf("iInterface: %d\r\n", desc->iInterface));
+
 			if (desc->bInterfaceClass == USB_CLASS_AUDIO &&
 				desc->bInterfaceSubClass == USB_SUBCLASS_MIDISTREAMING) {
 				MIDI_TRACE(printf("Midi device found\r\n");)
@@ -239,9 +265,27 @@ void USBMidi::parse_config_descriptors(uint32_t address, uint8_t config_index, u
 		case USB_DESCRIPTOR_ENDPOINT:
 		{
 			USB_ENDPOINT_DESCRIPTOR *desc = (USB_ENDPOINT_DESCRIPTOR*)ptr;
+			DESC_TRACE(printf("\r\nUSB_ENDPOINT_DESCRIPTOR\r\n"));
+			DESC_TRACE(printf("bLength: %d\r\n", desc->bLength));
+			DESC_TRACE(printf("bDescriptorType: 0x%x\r\n", desc->bDescriptorType));
+			DESC_TRACE(printf("bEndpointAddress: 0x%x (%s)\r\n", desc->bEndpointAddress, \ 
+				((desc->bEndpointAddress & USB_ENDPOINT_DIRECTION_MASK) ? "IN" : "OUT")));
+
+			DESC_TRACE(printf("bmAttributes: 0x%x (%s)\r\n", desc->bmAttributes, \
+				(((desc->bmAttributes & USB_ENDPOINT_TYPE_MASK) == USB_ENDPOINT_TYPE_CONTROL) ? "Control" : \
+				((desc->bmAttributes & USB_ENDPOINT_TYPE_MASK) == USB_ENDPOINT_TYPE_ISOCHRONOUS) ? "Isochronous" : \
+				((desc->bmAttributes & USB_ENDPOINT_TYPE_MASK) == USB_ENDPOINT_TYPE_BULK) ? "Bulk" : \
+				"Interrupt")));
+
+			DESC_TRACE(printf("wMaxPacketSize: %d\r\n", desc->wMaxPacketSize));
+			DESC_TRACE(printf("bInterval: 0x%x\r\n", desc->bInterval));
+
+
+
 			if ((desc->bmAttributes & bmUSB_TRANSFER_TYPE) == USB_ENDPOINT_TYPE_BULK) {
 				// select in or out end point index
 				uint8_t ep_index = ((desc->bEndpointAddress & 0x80) == 0x80) ? 1 : 2;
+
 
 				_ep_info[ep_index].deviceEpNum = desc->bEndpointAddress & 0x0F;
 				_ep_info[ep_index].maxPktSize = desc->wMaxPacketSize;
@@ -251,6 +295,7 @@ void USBMidi::parse_config_descriptors(uint32_t address, uint8_t config_index, u
 					_ep_info[ep_index].maxPktSize, 0, UOTGHS_HSTPIPCFG_PBK_1_BANK);
 
 				_ep_info[ep_index].hostPipeNum = pipe;
+				MIDI_TRACE(printf("allocated pipe %d for endpoint: %d\r\n", pipe, ep_index));
 				num_endpoints++;
 			}
 			break;
@@ -268,13 +313,7 @@ uint32_t USBMidi::Poll()
 {
 	uint32_t available;
 	while ((available = ijcringbuffer_consumeable_size_continuous(&_ringbuffer)) > 0) {
-
-		if(available < 4)
-			available = 4;
-
 		uint8_t *buffer = (uint8_t*)ijcringbuffer_peek(&_ringbuffer);
-
-		//printf("0x%x, 0x%x, 0x%x, 0x%x\r\n", buffer[0], buffer[1], buffer[2], buffer[3]);
 
 		uint8_t header = buffer[1] & 0xf0;
 

@@ -7,6 +7,10 @@
 //#define MIDI_TRACE(x) x
 #define MIDI_TRACE(x)
 
+#define DESC_TRACE(x) (x)
+//#define DESC_TRACE(x)
+
+//#define ISR_TRACE(x) (x)
 #define ISR_TRACE(x)
 
 #define PRINT_MIDI_INFO (1)
@@ -15,7 +19,7 @@
 #define MIDI_MAX_ENDPOINTS 5 
 #define USB_SUBCLASS_MIDISTREAMING 3
 
-#define RINGBUFFER_SIZE 32	// needs to be power of two
+#define RINGBUFFER_SIZE 128	// needs to be power of two
 
 #define MIDI_PITCHBEND_MIN      -8192
 #define MIDI_PITCHBEND_MAX      8191
