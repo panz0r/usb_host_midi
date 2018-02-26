@@ -44,7 +44,6 @@ void UHD_ISR_OVERRIDE(void)
 
 			uint8_t *ptr_ep_data = (uint8_t *)& uhd_get_pipe_fifo_access(pipe, 8);
 
-			// peek first byte and discard system messages for now
 			if (nb_byte_received > 0) {
 				int ret = ijcringbuffer_produce(&_ringbuffer, ptr_ep_data, nb_byte_received);
 				if (!ret) {
@@ -99,8 +98,6 @@ uint32_t USBMidi::Init(uint32_t parent, uint32_t port, uint32_t lowspeed)
 	device = address_pool.GetUsbDevicePtr(0);
 	if (!device)
 		return USB_ERROR_ADDRESS_NOT_FOUND_IN_POOL;
-
-	MIDI_TRACE(printf("default device: 0x%x\r\n", &device);)
 
 	if (!device->epinfo)
 		return USB_ERROR_EPINFO_IS_NULL;
